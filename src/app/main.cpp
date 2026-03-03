@@ -22,6 +22,7 @@
  * \brief Entry point of application - main() function
  */
 
+
 #include "common/config.h"
 
 #include "app/app.h"
