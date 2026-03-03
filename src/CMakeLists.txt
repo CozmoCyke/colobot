@@ -32,6 +32,7 @@ add_library(colobotbase STATIC
     app/pausemanager.h
     app/signal_handlers.cpp
     app/signal_handlers.h
+    common/edu_mode.cpp
     common/config_file.cpp
     common/config_file.h
     common/error.h

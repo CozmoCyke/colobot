@@ -24,6 +24,8 @@
 #include "app/modman.h"
 #include "app/pathman.h"
 
+#include "common/edu_mode.h"
+
 #include "common/config_file.h"
 #include "common/image.h"
 #include "common/key.h"
@@ -257,11 +259,13 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
         OPT_HEADLESS,
         OPT_DEVICE,
         OPT_OPENGL_VERSION,
-        OPT_OPENGL_PROFILE
+        OPT_OPENGL_PROFILE,
+        OPT_EDU
     };
 
     option options[] =
     {
+        { "edu", no_argument, nullptr, OPT_EDU},
         { "help", no_argument, nullptr, OPT_HELP },
         { "debug", required_argument, nullptr, OPT_DEBUG },
         { "runscene", required_argument, nullptr, OPT_RUNSCENE },
@@ -271,7 +275,7 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
         { "langdir", required_argument, nullptr, OPT_LANGDIR },
         { "datadir", required_argument, nullptr, OPT_DATADIR },
         { "savedir", required_argument, nullptr, OPT_SAVEDIR },
-        { "mod", required_argument, nullptr, OPT_MOD },
+        { "mod", required_argument, nullptr, OPT_MOD },   
         { "resolution", required_argument, nullptr, OPT_RESOLUTION },
         { "headless", no_argument, nullptr, OPT_HEADLESS },
         { "graphics", required_argument, nullptr, OPT_DEVICE },
@@ -301,7 +305,7 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
         index = -1;
 
         switch (c)
-        {
+        {   
             case OPT_HELP:
             {
                 GetLogger()->Message("\n");
@@ -326,6 +330,7 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
                 GetLogger()->Message("  -graphics           changes graphics device (one of: default, auto, opengl, gl14, gl21, gl33\n");
                 GetLogger()->Message("  -glversion          sets OpenGL context version to use (either default or version in format #.#)\n");
                 GetLogger()->Message("  -glprofile          sets OpenGL context profile to use (one of: default, core, compatibility, opengles)\n");
+                GetLogger()->Message("  -edu                Sets EDU MODE\n");
                 return PARSE_ARGS_HELP;
             }
             case OPT_DEBUG:
@@ -500,11 +505,17 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
                 }
                 break;
             }
+            case OPT_EDU:
+            {
+              Edu::SetEnabled(true);
+              GetLogger()->Info("EDU_MODE enabled\n");
+              break;
+            }
+           
             default:
                 assert(false); // should never get here
         }
     }
-
     return PARSE_ARGS_OK;
 }
 
