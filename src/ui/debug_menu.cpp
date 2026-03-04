@@ -21,6 +21,7 @@
 
 #include "app/app.h"
 
+#include "common/edu_mode.h"
 #include "common/event.h"
 #include "common/stringutils.h"
 #include "common/global.h"
@@ -81,6 +82,9 @@ const float /*sx = 33.0f/640.0f,*/ sy = 33.0f/480.0f;
 
 void CDebugMenu::CreateInterface()
 {
+    
+    if (Edu::IsEnabled())
+      return;
     CWindow* pw = m_interface->CreateWindows(Math::Point(), Math::Point(), 0, EVENT_WINDOW7);
     Math::Point pos, ddim;
     CCheck* pc;

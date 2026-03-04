@@ -25,6 +25,8 @@
 #include "app/input.h"
 #include "app/pausemanager.h"
 
+#include "common/edu_mode.h"
+
 #include "common/config_file.h"
 #include "common/event.h"
 #include "common/logger.h"
@@ -1212,6 +1214,7 @@ bool CRobotMain::ProcessEvent(Event &event)
 void CRobotMain::ExecuteCmd(const std::string& cmd)
 {
     if (cmd.empty()) return;
+    if (Edu::IsEnabled()) return;
 
     if (m_phase == PHASE_SIMUL)
     {
