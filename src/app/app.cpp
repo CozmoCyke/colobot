@@ -335,6 +335,12 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
             }
             case OPT_DEBUG:
             {
+              if (Edu::IsEnabled())
+              {
+                  GetLogger()->Warn("Ignoring -debug in EDU mode\n");
+                  break;
+              }
+
                 if (optarg == nullptr)
                 {
                     m_debugModes = DEBUG_ALL;
@@ -864,6 +870,9 @@ bool CApplication::CreateVideoSurface()
        and fail with error if not available */
     if (m_deviceConfig.hardwareAccel)
         SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
+    
+    if (Edu::IsEnabled() && m_windowTitle.find("[EDU]") == std::string::npos)
+    m_windowTitle += " [EDU]";
 
     m_private->window = SDL_CreateWindow(m_windowTitle.c_str(),
                                          SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
@@ -873,6 +882,8 @@ bool CApplication::CreateVideoSurface()
     m_private->glcontext = SDL_GL_CreateContext(m_private->window);
 
     int vsync = 0;
+
+
     if (GetConfigFile().GetIntProperty("Setup", "VSync", vsync))
     {
         m_engine->SetVSync(vsync);
