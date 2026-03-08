@@ -274,6 +274,9 @@ public:
 
     bool        GetSceneTestMode();
 
+    bool        IsSuperUser() const;
+    void        UpdateWindowTitle(const std::string& titleAddon);
+
     //! Renders the image in window
     void        Render();
 
@@ -349,6 +352,8 @@ protected:
     //! Current configuration of OpenGL display device
     Gfx::DeviceConfig m_deviceConfig;
 
+    //! Base text for window title
+    std::string     m_windowTitleBase;
     //! Text set as window title
     std::string     m_windowTitle;
 
@@ -420,6 +425,9 @@ protected:
 
     //! Headles mode
     bool            m_headless;
+
+    //! Teacher/admin mode in EDU
+    bool            m_superUser;
 
     //! Static buffer for putenv locale
     static char m_languageLocale[50];

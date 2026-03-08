@@ -21,6 +21,7 @@
 
 #include "app/app.h"
 
+#include "common/edu_mode.h"
 #include "common/logger.h"
 #include "common/stringutils.h"
 
@@ -112,6 +113,10 @@ void CScreenPlayerSelect::CreateInterface()
     pe->SetText(name.c_str());
     pe->SetCursor(name.length(), 0);
     m_interface->SetFocus(pe);
+    if (Edu::IsEnabled())
+    {
+        pe->SetEditCap(false);
+    }
 
     pos.x = 380.0f/640.0f;
     pos.y = 320.0f/480.0f;
@@ -169,8 +174,11 @@ bool CScreenPlayerSelect::EventProcess(const Event &event)
         }
 
         case EVENT_INTERFACE_NEDIT:
-            UpdateNameList();
-            UpdateNameControl();
+            if (!Edu::IsEnabled())
+            {
+                UpdateNameList();
+                UpdateNameControl();
+            }
             break;
 
         case EVENT_INTERFACE_NLIST:
@@ -187,6 +195,7 @@ bool CScreenPlayerSelect::EventProcess(const Event &event)
             break;
 
         case EVENT_INTERFACE_NDELETE:
+            if (Edu::IsEnabled()) break;
             pw = static_cast<CWindow*>(m_interface->SearchControl(EVENT_WINDOW5));
             if ( pw == nullptr )  break;
             pl = static_cast<CList*>(pw->SearchControl(EVENT_INTERFACE_NLIST));
@@ -252,19 +261,19 @@ void CScreenPlayerSelect::UpdateNameControl()
     pb = static_cast<CButton*>(pw->SearchControl(EVENT_INTERFACE_NDELETE));
     if ( pb != nullptr )
     {
-        pb->SetState(STATE_ENABLE, total>0 && sel!=-1);
+        pb->SetState(STATE_ENABLE, !Edu::IsEnabled() && total>0 && sel!=-1);
     }
 
     pb = static_cast<CButton*>(pw->SearchControl(EVENT_INTERFACE_NOK));
     if ( pb != nullptr )
     {
-        pb->SetState(STATE_ENABLE, !name.empty() || sel!=-1);
+        pb->SetState(STATE_ENABLE, Edu::IsEnabled() ? (sel!=-1) : (!name.empty() || sel!=-1));
     }
 
     pb = static_cast<CButton*>(pw->SearchControl(EVENT_INTERFACE_PERSO));
     if ( pb != nullptr )
     {
-        pb->SetState(STATE_ENABLE, !name.empty() || sel!=-1);
+        pb->SetState(STATE_ENABLE, Edu::IsEnabled() ? (sel!=-1) : (!name.empty() || sel!=-1));
     }
 }
 
@@ -287,6 +296,11 @@ void CScreenPlayerSelect::UpdateNameList()
 
     name = pe->GetText(100);
     total = pl->GetTotal();
+
+    if (Edu::IsEnabled())
+    {
+        return;
+    }
 
     for ( i=0 ; i<total ; i++ )
     {
@@ -357,6 +371,11 @@ void CScreenPlayerSelect::NameSelect()
 
     if ( sel == -1 )
     {
+        if (Edu::IsEnabled())
+        {
+            m_sound->Play(SOUND_TZOING);
+            return;
+        }
         NameCreate();
     }
     else
@@ -371,6 +390,10 @@ void CScreenPlayerSelect::NameSelect()
 
 bool CScreenPlayerSelect::NameCreate()
 {
+    if (Edu::IsEnabled())
+    {
+        return false;
+    }
     CWindow*    pw;
     CEdit*      pe;
 
@@ -399,6 +422,11 @@ bool CScreenPlayerSelect::NameCreate()
 
 void CScreenPlayerSelect::NameDelete()
 {
+    if (Edu::IsEnabled())
+    {
+        m_sound->Play(SOUND_TZOING);
+        return;
+    }
     CWindow* pw = static_cast<CWindow*>(m_interface->SearchControl(EVENT_WINDOW5));
     if (pw == nullptr) return;
     CList* pl = static_cast<CList*>(pw->SearchControl(EVENT_INTERFACE_NLIST));

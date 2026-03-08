@@ -125,7 +125,8 @@ CApplication::CApplication(CSystemUtils* systemUtils)
     m_active        = false;
     m_debugModes    = 0;
 
-    m_windowTitle = "Colobot: Gold Edition";
+    m_windowTitleBase = "Colobot: Gold Edition";
+    m_windowTitle = m_windowTitleBase;
 
     m_simulationSuspended = false;
 
@@ -152,6 +153,7 @@ CApplication::CApplication(CSystemUtils* systemUtils)
 
     m_sceneTest = false;
     m_headless = false;
+    m_superUser = false;
     m_resolutionOverride = false;
 
     m_language = LANGUAGE_ENV;
@@ -260,12 +262,14 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
         OPT_DEVICE,
         OPT_OPENGL_VERSION,
         OPT_OPENGL_PROFILE,
-        OPT_EDU
+        OPT_EDU,
+        OPT_SUPERUSER
     };
 
     option options[] =
     {
         { "edu", no_argument, nullptr, OPT_EDU},
+        { "superuser", no_argument, nullptr, OPT_SUPERUSER},
         { "help", no_argument, nullptr, OPT_HELP },
         { "debug", required_argument, nullptr, OPT_DEBUG },
         { "runscene", required_argument, nullptr, OPT_RUNSCENE },
@@ -331,6 +335,7 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
                 GetLogger()->Message("  -glversion          sets OpenGL context version to use (either default or version in format #.#)\n");
                 GetLogger()->Message("  -glprofile          sets OpenGL context profile to use (one of: default, core, compatibility, opengles)\n");
                 GetLogger()->Message("  -edu                Sets EDU MODE\n");
+                GetLogger()->Message("  -superuser          Enables teacher/admin superuser mode\n");
                 return PARSE_ARGS_HELP;
             }
             case OPT_DEBUG:
@@ -517,7 +522,13 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
               GetLogger()->Info("EDU_MODE enabled\n");
               break;
             }
-           
+            case OPT_SUPERUSER:
+            {
+              m_superUser = true;
+              GetLogger()->Info("SUPERUSER mode enabled\n");
+              break;
+            }
+
             default:
                 assert(false); // should never get here
         }
@@ -871,8 +882,7 @@ bool CApplication::CreateVideoSurface()
     if (m_deviceConfig.hardwareAccel)
         SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
     
-    if (Edu::IsEnabled() && m_windowTitle.find("[EDU]") == std::string::npos)
-    m_windowTitle += " [EDU]";
+    UpdateWindowTitle("");
 
     m_private->window = SDL_CreateWindow(m_windowTitle.c_str(),
                                          SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
@@ -2039,4 +2049,24 @@ void CApplication::StopForceFeedbackEffect()
 {
     if (m_private->haptic == nullptr) return;
     SDL_HapticRumbleStop(m_private->haptic);
+}
+
+
+bool CApplication::IsSuperUser() const
+{
+    return m_superUser;
+}
+
+void CApplication::UpdateWindowTitle(const std::string& titleAddon)
+{
+    m_windowTitle = m_windowTitleBase;
+    if (!titleAddon.empty())
+    {
+        m_windowTitle += " ";
+        m_windowTitle += titleAddon;
+    }
+    if (m_private != nullptr && m_private->window != nullptr)
+    {
+        SDL_SetWindowTitle(m_private->window, m_windowTitle.c_str());
+    }
 }
