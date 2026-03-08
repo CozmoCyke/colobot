@@ -22,6 +22,7 @@
 #include "app/app.h"
 
 #include "common/logger.h"
+#include "common/edu_mode.h"
 #include "common/stringutils.h"
 
 #include "level/player_profile.h"
@@ -134,12 +135,15 @@ void CScreenPlayerSelect::CreateInterface()
     pli = pw->CreateList(pos, ddim, 0, EVENT_INTERFACE_NLIST);
     pli->SetState(STATE_SHADOW);
 
-    pos.x = 200.0f/640.0f;
-    pos.y = 100.0f/480.0f;
-    ddim.x = 160.0f/640.0f;
-    ddim.y =  32.0f/480.0f;
-    pb = pw->CreateButton(pos, ddim, -1, EVENT_INTERFACE_NDELETE);
-    pb->SetState(STATE_SHADOW);
+    if (!Edu::IsEnabled())
+    {
+        pos.x = 200.0f/640.0f;
+        pos.y = 100.0f/480.0f;
+        ddim.x = 160.0f/640.0f;
+        ddim.y =  32.0f/480.0f;
+        pb = pw->CreateButton(pos, ddim, -1, EVENT_INTERFACE_NDELETE);
+        pb->SetState(STATE_SHADOW);
+    }
 
     SetBackground("textures/interface/interface.png");
     CreateVersionDisplay();

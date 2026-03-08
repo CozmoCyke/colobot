@@ -22,6 +22,7 @@
 #include "app/app.h"
 
 #include "common/settings.h"
+#include "common/edu_mode.h"
 
 #include "common/resources/resourcemanager.h"
 
@@ -184,7 +185,8 @@ void CScreenLevelList::CreateInterface()
     pe->SetHighlightCap(false);
 
     // Button displays the "soluce":
-    if ( m_category != LevelCategory::Exercises &&
+    if ( !Edu::IsEnabled() &&
+         m_category != LevelCategory::Exercises &&
          m_category != LevelCategory::GamePlus  &&
          m_category != LevelCategory::FreeGame   )
     {
