@@ -260,7 +260,8 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
         OPT_DEVICE,
         OPT_OPENGL_VERSION,
         OPT_OPENGL_PROFILE,
-        OPT_EDU
+        OPT_EDU,
+        OPT_SUPERUSER
     };
 
     option options[] =
@@ -281,6 +282,7 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
         { "graphics", required_argument, nullptr, OPT_DEVICE },
         { "glversion", required_argument, nullptr, OPT_OPENGL_VERSION },
         { "glprofile", required_argument, nullptr, OPT_OPENGL_PROFILE },
+        { "superuser", no_argument, nullptr, OPT_SUPERUSER },
         { nullptr, 0, nullptr, 0}
     };
 
@@ -331,6 +333,7 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
                 GetLogger()->Message("  -glversion          sets OpenGL context version to use (either default or version in format #.#)\n");
                 GetLogger()->Message("  -glprofile          sets OpenGL context profile to use (one of: default, core, compatibility, opengles)\n");
                 GetLogger()->Message("  -edu                Sets EDU MODE\n");
+                GetLogger()->Message("  -superuser          enable SuperUser mode for advanced console commands\n");
                 return PARSE_ARGS_HELP;
             }
             case OPT_DEBUG:
@@ -516,6 +519,12 @@ ParseArgsStatus CApplication::ParseArguments(int argc, char *argv[])
               Edu::SetEnabled(true);
               GetLogger()->Info("EDU_MODE enabled\n");
               break;
+            }
+            case OPT_SUPERUSER:
+            {
+                m_superUser = true;
+                GetLogger()->Info("SuperUser mode enabled\n");
+                break;
             }
            
             default:
@@ -1247,6 +1256,11 @@ int CApplication::GetExitCode() const
 const std::string& CApplication::GetErrorMessage() const
 {
     return m_errorMessage;
+}
+
+bool CApplication::IsSuperUserEnabled() const
+{
+    return m_superUser;
 }
 
 /** The SDL event parsed is stored internally.
