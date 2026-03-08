@@ -22,6 +22,7 @@
 #include "app/app.h"
 
 #include "common/logger.h"
+#include "common/edu_mode.h"
 #include "common/restext.h"
 
 #include "level/parser/parser.h"
@@ -149,10 +150,13 @@ void CScreenMainMenu::CreateInterface()
     pb = pw->CreateButton(pos, ddim, -1, EVENT_INTERFACE_NAME);
     pb->SetState(STATE_SHADOW);
 
-    ddim.y = dim.y*0.75f;
-    pos.y = oy+sy*3.5f;
-    pb = pw->CreateButton(pos, ddim, -1, EVENT_INTERFACE_SETUP);
-    pb->SetState(STATE_SHADOW);
+    if (!Edu::IsEnabled())
+    {
+        ddim.y = dim.y*0.75f;
+        pos.y = oy+sy*3.5f;
+        pb = pw->CreateButton(pos, ddim, -1, EVENT_INTERFACE_SETUP);
+        pb->SetState(STATE_SHADOW);
+    }
 
     ddim.y = dim.y*1;
     pos.y = oy+sy*2.0f;
