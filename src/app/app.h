@@ -171,6 +171,8 @@ public:
     void LoadEnvironmentVariables();
     //! Parses commandline arguments (they take priority)
     ParseArgsStatus ParseArguments(int argc, char *argv[]);
+    //! Returns true when -SuperUser command-line flag is present
+    bool        IsSuperUserEnabled() const;
     //! Initializes the application
     bool        Create();
     //! Reloads the application resources, e.g. mods
@@ -420,6 +422,9 @@ protected:
 
     //! Headles mode
     bool            m_headless;
+
+    //! Enables additional developer-only command console actions
+    bool            m_superUser = false;
 
     //! Static buffer for putenv locale
     static char m_languageLocale[50];

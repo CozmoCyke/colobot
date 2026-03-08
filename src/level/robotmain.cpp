@@ -1216,6 +1216,30 @@ void CRobotMain::ExecuteCmd(const std::string& cmd)
     if (cmd.empty()) return;
     if (Edu::IsEnabled()) return;
 
+    const bool superUserOnlyCommand =
+        cmd == "winmission" ||
+        cmd == "lostmission" ||
+        cmd == "trainerpilot" ||
+        cmd == "fly" ||
+        cmd == "allresearch" ||
+        cmd == "allbuildings" ||
+        cmd == "all" ||
+        cmd == "nolimit" ||
+        cmd == "noclip" ||
+        cmd == "clip" ||
+        cmd == "addhusky" ||
+        cmd == "addfreezer" ||
+        cmd == "fullpower" ||
+        cmd == "fullenergy" ||
+        cmd == "fullshield" ||
+        cmd == "fullrange";
+
+    if (superUserOnlyCommand && !m_app->IsSuperUserEnabled())
+    {
+        GetLogger()->Info("This action requires -superuser\n");
+        return;
+    }
+
     if (m_phase == PHASE_SIMUL)
     {
         if (cmd == "winmission")
