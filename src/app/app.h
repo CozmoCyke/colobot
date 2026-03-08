@@ -273,6 +273,7 @@ public:
     //@}
 
     bool        GetSceneTestMode();
+    bool        IsSuperUserEnabled() const;
 
     //! Renders the image in window
     void        Render();
@@ -417,6 +418,9 @@ protected:
 
     //! Screen resolution overriden by commandline
     bool            m_resolutionOverride;
+
+    //! Superuser mode enabled by commandline
+    bool            m_superUser = false;
 
     //! Headles mode
     bool            m_headless;

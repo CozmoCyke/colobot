@@ -111,6 +111,7 @@
 
 #include "ui/screen/screen_loading.h"
 
+#include <array>
 #include <algorithm>
 #include <iomanip>
 #include <stdexcept>
@@ -1214,7 +1215,60 @@ bool CRobotMain::ProcessEvent(Event &event)
 void CRobotMain::ExecuteCmd(const std::string& cmd)
 {
     if (cmd.empty()) return;
-    if (Edu::IsEnabled()) return;
+
+    if (Edu::IsEnabled())
+    {
+        GetLogger()->Info("Console commands are disabled in EDU mode\n");
+        return;
+    }
+
+    static const std::array<std::string, 28> superUserOnlyCommand =
+    {
+        "winmission",
+        "lostmission",
+        "trainerpilot",
+        "fly",
+        "allresearch",
+        "allbuildings",
+        "all",
+        "nolimit",
+        "controller",
+        "photo1",
+        "photo2",
+        "freecam",
+        "noclip",
+        "clip",
+        "addhusky",
+        "addfreezer",
+        "\155\157\157",
+        "fullpower",
+        "fullenergy",
+        "fullshield",
+        "fullrange",
+        "debugmode",
+        "showstat",
+        "invui",
+        "selectinsect",
+        "showsoluce",
+        "allmission",
+        "invradar"
+    };
+
+    bool superUserCommand = std::find(superUserOnlyCommand.begin(), superUserOnlyCommand.end(), cmd) != superUserOnlyCommand.end();
+
+    int dummyCamtype;
+    float dummyCamspeed;
+    float dummySpeed;
+    superUserCommand = superUserCommand ||
+        sscanf(cmd.c_str(), "camtype %d", &dummyCamtype) > 0 ||
+        sscanf(cmd.c_str(), "camspeed %f", &dummyCamspeed) > 0 ||
+        sscanf(cmd.c_str(), "speed %f", &dummySpeed) > 0;
+
+    if (superUserCommand && !m_app->IsSuperUserEnabled())
+    {
+        GetLogger()->Info("This action requires -superuser\n");
+        return;
+    }
 
     if (m_phase == PHASE_SIMUL)
     {
