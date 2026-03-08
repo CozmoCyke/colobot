@@ -24,6 +24,8 @@
 namespace Ui
 {
 
+class CWindow;
+
 class CScreenMainMenu : public CScreen
 {
 public:
@@ -31,6 +33,13 @@ public:
 
     void CreateInterface() override;
     bool EventProcess(const Event &event) override;
+
+private:
+    void ApplyEduTopLevelLayout(CWindow* window);
+    void ApplyEduSpecialMissionsLayout(CWindow* window);
+    bool OpenEduSecondaryCategory(EventType eventType);
+
+    bool m_inEduSpecialMissions = false;
 };
 
 } // namespace Ui

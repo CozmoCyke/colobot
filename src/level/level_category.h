@@ -35,3 +35,4 @@ enum class LevelCategory
 
 std::string GetLevelCategoryDir(LevelCategory category);
 LevelCategory GetLevelCategoryFromDir(std::string dir);
+bool HasPlayableLevels(LevelCategory category);

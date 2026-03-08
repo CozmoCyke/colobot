@@ -188,7 +188,15 @@ void CMainUserInterface::ChangePhase(Phase phase)
     }
     if (m_phase == PHASE_MOD_LIST)
     {
-        m_currentScreen = m_screenModList.get();
+        if (m_main->CanAccessPackageManagement())
+        {
+            m_currentScreen = m_screenModList.get();
+        }
+        else
+        {
+            m_main->ChangePhase(PHASE_MAIN_MENU);
+            return;
+        }
     }
     if (m_phase >= PHASE_SETUPd && m_phase <= PHASE_SETUPs)
     {

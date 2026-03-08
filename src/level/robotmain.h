@@ -283,6 +283,11 @@ public:
 
     void        SetLevel(LevelCategory cat, int chap, int rank);
     LevelCategory GetLevelCategory();
+    bool        HasPlayableLevels(LevelCategory category) const;
+    bool        HasEduSpecialMissions() const;
+    bool        IsEduMainCategory(LevelCategory category) const;
+    bool        CanAccessPackageManagement() const;
+    void        UpdateWindowTitle() const;
     int         GetLevelChap();
     int         GetLevelRank();
     std::string GetCustomLevelDir();

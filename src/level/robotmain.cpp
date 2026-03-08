@@ -371,6 +371,11 @@ bool IsMainMenuPhase(Phase phase)
 //! Changes phase
 void CRobotMain::ChangePhase(Phase phase)
 {
+    if (phase == PHASE_MOD_LIST && !CanAccessPackageManagement())
+    {
+        phase = PHASE_MAIN_MENU;
+    }
+
     bool resetWorld = false;
     if ((IsPhaseWithWorld(m_phase) || IsPhaseWithWorld(phase)) && !IsInSimulationConfigPhase(m_phase) && !IsInSimulationConfigPhase(phase))
     {
@@ -418,6 +423,7 @@ void CRobotMain::ChangePhase(Phase phase)
     }
 
     m_phase = phase;
+    UpdateWindowTitle();
 
     if (m_phase != PHASE_SIMUL)
     {
@@ -5026,6 +5032,7 @@ void CRobotMain::SelectPlayer(std::string playerName)
 
     m_playerProfile = MakeUnique<CPlayerProfile>(playerName);
     SetGlobalGamerName(playerName);
+    UpdateWindowTitle();
 }
 
 CPlayerProfile* CRobotMain::GetPlayerProfile()
@@ -5486,6 +5493,65 @@ void CRobotMain::SetLevel(LevelCategory cat, int chap, int rank)
 LevelCategory CRobotMain::GetLevelCategory()
 {
     return m_levelCategory;
+}
+
+bool CRobotMain::HasPlayableLevels(LevelCategory category) const
+{
+    return ::HasPlayableLevels(category);
+}
+
+bool CRobotMain::IsEduMainCategory(LevelCategory category) const
+{
+    return category == LevelCategory::Missions ||
+           category == LevelCategory::GamePlus ||
+           category == LevelCategory::CodeBattles;
+}
+
+bool CRobotMain::HasEduSpecialMissions() const
+{
+    for (int i = 0; i < static_cast<int>(LevelCategory::Max); ++i)
+    {
+        LevelCategory category = static_cast<LevelCategory>(i);
+        if (IsEduMainCategory(category))
+            continue;
+
+        if (HasPlayableLevels(category))
+            return true;
+    }
+
+    return false;
+}
+
+bool CRobotMain::CanAccessPackageManagement() const
+{
+    if (!Edu::IsEnabled())
+        return true;
+
+    return m_app->IsSuperUser();
+}
+
+void CRobotMain::UpdateWindowTitle() const
+{
+    if (!Edu::IsEnabled())
+    {
+        m_app->UpdateWindowTitle("");
+        return;
+    }
+
+    if (m_app->IsSuperUser())
+    {
+        m_app->UpdateWindowTitle("[EDU SUPERUSER]");
+        return;
+    }
+
+    std::string suffix = "[EDU]";
+    if (m_playerProfile != nullptr && !m_playerProfile->GetName().empty())
+    {
+        suffix += " < ";
+        suffix += m_playerProfile->GetName();
+        suffix += " >";
+    }
+    m_app->UpdateWindowTitle(suffix);
 }
 
 int CRobotMain::GetLevelChap()

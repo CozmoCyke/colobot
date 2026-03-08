@@ -19,6 +19,10 @@
 
 #include "level/level_category.h"
 
+#include "common/resources/resourcemanager.h"
+
+#include "level/parser/parser.h"
+
 #include <map>
 
 // NOTE: Because of how save filenames are built, the first letter of category directories MUST be unique!!
@@ -48,4 +52,35 @@ LevelCategory GetLevelCategoryFromDir(std::string dir)
         }
     }
     return LevelCategory::Max;
+}
+
+
+bool HasPlayableLevels(LevelCategory category)
+{
+    if (category == LevelCategory::CustomLevels)
+    {
+        return !CResourceManager::ListDirectories(CLevelParser::BuildCategoryPath(category)).empty();
+    }
+
+    constexpr int maxScene = 999;
+
+    for (int chap = 1; chap <= maxScene; ++chap)
+    {
+        CLevelParser chapterParser(category, chap, 0);
+        if (chapterParser.Exists())
+        {
+            return true;
+        }
+
+        for (int rank = 1; rank <= maxScene; ++rank)
+        {
+            CLevelParser levelParser(category, chap, rank);
+            if (levelParser.Exists())
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
