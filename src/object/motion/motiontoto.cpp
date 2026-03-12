@@ -3,6 +3,7 @@
  * Copyright (C) 2001-2023, Daniel Roux, EPSITEC SA & TerranovaTeam
  * http://epsitec.ch; http://colobot.info; http://github.com/colobot
  *
+
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -20,7 +21,10 @@
 
 #include "object/motion/motiontoto.h"
 
+#include <algorithm>
+
 #include "app/app.h"
+#include "common/logger.h"
 
 #include "graphics/engine/oldmodelmanager.h"
 #include "graphics/engine/terrain.h"
@@ -29,6 +33,8 @@
 #include "level/robotmain.h"
 
 #include "math/geometry.h"
+
+#include "object/object_manager.h"
 
 #include "object/old_object.h"
 
@@ -47,6 +53,7 @@ CMotionToto::CMotionToto(COldObject* object) : CMotion(object)
 {
     m_time = 0.0f;
     m_bDisplayInfo = false;
+    m_bNearFollow = false;
     m_bQuickPos = false;
     m_bStartAction = false;
     m_speedAction = 20.0f;
@@ -56,8 +63,11 @@ CMotionToto::CMotionToto(COldObject* object) : CMotion(object)
     m_clownTime   = 0.0f;
     m_blinkTime   = 0.0f;
     m_blinkProgress = -1.0f;
+    m_followDistance = 12.0f;
     m_lastMotorParticle = 0.0f;
     m_mousePos = Math::Point(0.0f, 0.0f);
+    m_nearTargetId = -1;
+    m_lookTargetId = -1;
 }
 
 // Object's destructor.
@@ -187,24 +197,46 @@ void CMotionToto::Create(Math::Vector pos, float angle, ObjectType type,
 
 void CMotionToto::StartDisplayInfo()
 {
-return;
-//?
     m_bDisplayInfo = true;
+    m_actionType = -1;
+    m_actionTime = 0.0f;
+    m_progress   = 0.0f;
+    m_object->SetRotationY(0.0f);
+    m_mousePos = Math::Point(0.5f, 0.5f);
+}
+// End of the display of informations.
+void CMotionToto::StopDisplayInfo()
+{
+    m_bDisplayInfo = false;
+    m_bQuickPos = true;
+}
+
+void CMotionToto::StartNearFollow()
+{
+    GetLogger()->Info("[RobbieMotion] near-follow active\n");
+    m_bNearFollow = true;
+    CObject* nearTarget = m_main->GetSelect();
+    m_nearTargetId = nearTarget != nullptr ? nearTarget->GetID() : -1;
 
     m_actionType = -1;
     m_actionTime = 0.0f;
     m_progress   = 0.0f;
 
     m_object->SetRotationY(0.0f);
-    m_mousePos = Math::Point(0.5f, 0.5f);
 }
 
-// End of the display of informations.
-
-void CMotionToto::StopDisplayInfo()
+void CMotionToto::StopNearFollow()
 {
-    m_bDisplayInfo = false;
+    GetLogger()->Info("[RobbieMotion] near-follow disabled\n");
+    m_bNearFollow = false;
+    m_nearTargetId = -1;
     m_bQuickPos = true;
+}
+
+void CMotionToto::SetFollowDistance(float distance)
+{
+    m_followDistance = std::clamp(distance, 4.0f, 30.0f);
+    GetLogger()->Info("[RobbieMotion] follow distance=%.3f\n", m_followDistance);
 }
 
 // Getes the position of the mouse.
@@ -212,6 +244,24 @@ void CMotionToto::StopDisplayInfo()
 void CMotionToto::SetMousePos(Math::Point pos)
 {
     m_mousePos = pos;
+}
+
+void CMotionToto::SetLookTarget(CObject* object)
+{
+    m_lookTargetId = object != nullptr ? object->GetID() : -1;
+}
+
+CObject* CMotionToto::GetLookTarget() const
+{
+    if (m_lookTargetId < 0)
+        return nullptr;
+
+    return static_cast<CObject*>(CObjectManager::GetInstancePointer()->GetObjectById(m_lookTargetId));
+}
+
+void CMotionToto::ClearLookTarget()
+{
+    m_lookTargetId = -1;
 }
 
 
@@ -247,8 +297,12 @@ bool CMotionToto::EventFrame(const Event &event)
     if ( m_engine->GetPause() &&
          !m_main->GetInfoLock() )  return true;
 
-    if ( m_bDisplayInfo )  // "looks" mouse?
+    if ( m_bNearFollow || m_bDisplayInfo )
     {
+        if ( m_bDisplayInfo )
+        {
+            GetLogger()->Info("[RobbieMotion] display-info active separately\n");
+        }
         bHidden = false;
     }
     else
@@ -310,18 +364,33 @@ bool CMotionToto::EventFrame(const Event &event)
     aAntenna.x += 30.0f*Math::PI/180.0f;
 
     // Calculates the new position.
-    if ( m_bDisplayInfo )
+    if ( m_bNearFollow )
     {
-        wDim = m_engine->GetWindowSize();
-        nPos.x = -4.0f*(static_cast< float >(wDim.x)/static_cast< float >(wDim.y))/(640.0f/480.0f);
-        nPos.y = -0.5f;
-        nPos.z =  7.0f;  // in the left margin
+        GetLogger()->Info("[RobbieMotion] near enter\n");
 
+        CObject* nearTarget = nullptr;
+        if (m_nearTargetId >= 0)
+            nearTarget = static_cast<CObject*>(CObjectManager::GetInstancePointer()->GetObjectById(m_nearTargetId));
+        if (nearTarget == nullptr && m_nearTargetId < 0)
+            nearTarget = m_main->GetSelect();
+
+        Math::Vector targetPos = nearTarget != nullptr ? nearTarget->GetPosition() : m_object->GetPosition();
+        float targetAngle = nearTarget != nullptr ? nearTarget->GetRotationY() : 0.0f;
+        dir = Math::Vector(sinf(targetAngle), 0.0f, cosf(targetAngle));
+        perp = Math::Vector(-dir.z, 0.0f, dir.x);
+
+        distance = m_followDistance;
+        shift = 0.0f;
+
+        nPos = targetPos + dir*distance + perp*shift;
+        nPos.y = m_terrain->GetFloorLevel(nPos) + 2.0f;
+
+        GetLogger()->Info("[RobbieMotion] near computed nPos=(%.3f, %.3f, %.3f)\n", nPos.x, nPos.y, nPos.z);
         linSpeed = 0.0f;
     }
     else
     {
-        distance = 30.0f-progress*18.0f;  // remoteness
+        distance = m_followDistance;  // remoteness
         shift    = 18.0f-progress*11.0f;  // shift is left
         verti    = 10.0f-progress* 8.0f;  // shift at the top
 
@@ -396,19 +465,33 @@ bool CMotionToto::EventFrame(const Event &event)
             verti += (18.0f-shift)*0.2f;
         }
 
-        distance /= focus;
-//?     shift    *= focus;
-        verti    /= focus;
+        CObject* target = m_main->GetSelect();
+        if ( target != nullptr )
+        {
+            Math::Vector targetPos = target->GetPosition();
+            float targetAngle = target->GetRotationY();
+            dir = Math::Vector(sinf(targetAngle), 0.0f, cosf(targetAngle));
+            perp = Math::Vector(-dir.z, 0.0f, dir.x);
 
-        dir = Normalize(lookat-eye);
-        nPos = eye + dir*distance;
+            nPos = targetPos - dir*distance + perp*shift;
+            nPos.y = m_terrain->GetFloorLevel(nPos) + verti;
+        }
+        else
+        {
+            distance /= focus;
+//?         shift    *= focus;
+            verti    /= focus;
 
-        perp.x = -dir.z;
-        perp.y =  dir.y;
-        perp.z =  dir.x;
-        nPos = nPos + perp*shift;
+            dir = Normalize(lookat-eye);
+            nPos = eye + dir*distance;
 
-        nPos.y += verti;
+            perp.x = -dir.z;
+            perp.y =  dir.y;
+            perp.z =  dir.x;
+            nPos = nPos + perp*shift;
+
+            nPos.y += verti;
+        }
 
         if ( m_bQuickPos )  // immediately in place?
         {
@@ -442,14 +525,22 @@ bool CMotionToto::EventFrame(const Event &event)
     }
 
     // Calculate the new angle.
-    nAngle = Math::NormAngle(Math::RotateAngle(eye.x-lookat.x, lookat.z-eye.z)-0.9f);
-    if ( linSpeed == 0.0f || m_actionType != -1 )
+    if ( m_bNearFollow )
     {
+        nAngle = Math::NormAngle(Math::RotateAngle(eye.x-nPos.x, nPos.z-eye.z)-0.9f);
         mAngle = nAngle;
     }
     else
     {
-        mAngle = Math::NormAngle(Math::RotateAngle(dirSpeed.x, -dirSpeed.z));
+        nAngle = Math::NormAngle(Math::RotateAngle(eye.x-lookat.x, lookat.z-eye.z)-0.9f);
+        if ( linSpeed == 0.0f || m_actionType != -1 )
+        {
+            mAngle = nAngle;
+        }
+        else
+        {
+            mAngle = Math::NormAngle(Math::RotateAngle(dirSpeed.x, -dirSpeed.z));
+        }
     }
     level = Math::Min(linSpeed*0.1f, 1.0f);
     nAngle = nAngle*(1.0f-level) + mAngle*level;
@@ -531,36 +622,36 @@ bool CMotionToto::EventFrame(const Event &event)
     }
 
     // Initialize the object.
-    if ( m_bDisplayInfo )  // "looks" mouse?
+    CObject* lookTarget = GetLookTarget();
+    if ( lookTarget != nullptr )
     {
-        if ( m_mousePos.x < 0.15f )
-        {
-            progress = 1.0f-m_mousePos.x/0.15f;
-            vibCir.y += progress*Math::PI/2.0f;
-        }
-        else
-        {
-            progress = (m_mousePos.x-0.15f)/0.85f;
-            vibCir.y -= progress*Math::PI/3.0f;
-        }
+        Math::Vector targetPos = lookTarget->GetPosition();
+        Math::Vector delta = targetPos - nPos;
+        float yaw = Math::NormAngle(Math::RotateAngle(delta.x, delta.z) - nAngle);
+        if ( yaw > Math::PI ) yaw -= Math::PI*2.0f;
+        if ( yaw < -Math::PI ) yaw += Math::PI*2.0f;
+        if ( yaw > Math::PI*0.5f ) yaw = Math::PI*0.5f;
+        if ( yaw < -Math::PI*0.5f ) yaw = -Math::PI*0.5f;
+        vibCir.y += yaw;
 
-        angle = Math::RotateAngle(m_mousePos.x-0.1f, m_mousePos.y-0.5f-vibLin.y*0.2f);
-        if ( angle < Math::PI )
-        {
-            if ( angle > Math::PI*0.5f )  angle = Math::PI-angle;
-            if ( angle > Math::PI*0.3f )  angle = Math::PI*0.3f;
-            vibCir.z += angle;
-        }
-        else
-        {
-            angle = Math::PI*2.0f-angle;
-            if ( angle > Math::PI*0.5f )  angle = Math::PI-angle;
-            if ( angle > Math::PI*0.3f )  angle = Math::PI*0.3f;
-            vibCir.z -= angle;
-        }
+        float horizontal = sqrtf(delta.x*delta.x + delta.z*delta.z);
+        float pitch = atan2f(delta.y, std::max(horizontal, 0.001f));
+        if ( pitch > Math::PI*0.3f ) pitch = Math::PI*0.3f;
+        if ( pitch < -Math::PI*0.3f ) pitch = -Math::PI*0.3f;
+        vibCir.z -= pitch;
+    }
+    else if ( m_bNearFollow )
+    {
+        nAngle = Math::NormAngle(Math::RotateAngle(eye.x-nPos.x, nPos.z-eye.z));
+        vibCir.x = 0.0f;
+        vibCir.y = 0.0f;
+        vibCir.z = 0.0f;
+        GetLogger()->Info("[RobbieMotion] near neutral yaw=%.3f\n", nAngle);
+        GetLogger()->Info("[RobbieMotion] near no-target fully neutral head\n");
     }
     else
     {
+        float unclampedY = nPos.y;
         nPos.y += vibLin.y;
         level = m_terrain->GetFloorLevel(nPos);
         if ( nPos.y < level+2.0f )
@@ -568,9 +659,14 @@ bool CMotionToto::EventFrame(const Event &event)
             nPos.y = level+2.0f;  // just above the ground
         }
         nPos.y -= vibLin.y;
+        (void)unclampedY;
     }
     m_object->SetPosition(nPos);
     m_object->SetRotationY(nAngle);
+    if ( m_bNearFollow )
+    {
+        GetLogger()->Info("[RobbieMotion] near final SetPosition=(%.3f, %.3f, %.3f) exclusive\n", nPos.x, nPos.y, nPos.z);
+    }
 
     SetLinVibration(vibLin);
     SetCirVibration(vibCir);

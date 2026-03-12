@@ -48,6 +48,7 @@
 #include "object/auto/autofactory.h"
 
 #include "object/interface/destroyable_object.h"
+#include "object/interface/movable_object.h"
 #include "object/interface/programmable_object.h"
 #include "object/interface/task_executor_object.h"
 #include "object/interface/trace_drawing_object.h"
@@ -57,6 +58,8 @@
 #include "object/subclass/shielder.h"
 
 #include "object/task/taskinfo.h"
+
+#include "object/motion/motiontoto.h"
 
 #include "physics/physics.h"
 
@@ -79,6 +82,266 @@ CBotTypResult CScriptFunctions::cClassNull(CBotVar* thisclass, CBotVar* &var)
 CBotTypResult CScriptFunctions::cClassOneFloat(CBotVar* thisclass, CBotVar* &var)
 {
     return cOneFloat(var, nullptr);
+}
+
+static CBotTypResult cRobbieOneObject(CBotVar* thisclass, CBotVar* &var)
+{
+    if ( var != nullptr )
+    {
+        var = var->GetNext();
+        if ( var == nullptr )  return CBotTypResult(CBotTypFloat);
+    }
+    else
+    {
+        return CBotTypResult(CBotTypFloat);
+    }
+
+    return CBotTypResult(CBotErrOverParam);
+}
+
+static void LogRobbieObject(const char* label, CObject* object)
+{
+    if (object == nullptr)
+    {
+        GetLogger()->Info("[RobbieRuntime] %s object=null\n", label);
+        return;
+    }
+
+    GetLogger()->Info("[RobbieRuntime] %s object id=%d type=%d\n",
+                      label, object->GetID(), static_cast<int>(object->GetType()));
+}
+
+static CMotionToto* GetRobbieMotion(CObject* object)
+{
+    if (object == nullptr)
+    {
+        GetLogger()->Info("[RobbieRuntime] GetRobbieMotion object=null\n");
+        return nullptr;
+    }
+
+    GetLogger()->Info("[RobbieRuntime] GetRobbieMotion inspect id=%d type=%d\n",
+                      object->GetID(), static_cast<int>(object->GetType()));
+
+    if (object->GetType() != OBJECT_TOTO)
+    {
+        GetLogger()->Info("[RobbieRuntime] GetRobbieMotion rejected non-Robbie type\n");
+        return nullptr;
+    }
+
+    if (!object->Implements(ObjectInterfaceType::Movable))
+    {
+        GetLogger()->Info("[RobbieRuntime] GetRobbieMotion Robbie found but not movable\n");
+        return nullptr;
+    }
+
+    CMotion* motion = dynamic_cast<CMovableObject&>(*object).GetMotion();
+    CMotionToto* totoMotion = dynamic_cast<CMotionToto*>(motion);
+    GetLogger()->Info("[RobbieRuntime] GetRobbieMotion CMotionToto %s\n",
+                      totoMotion != nullptr ? "found" : "not found");
+    return totoMotion;
+}
+
+static CMotionToto* FindRobbieMotion()
+{
+    GetLogger()->Info("[RobbieRuntime] FindRobbieMotion begin\n");
+    for (CObject* object : CObjectManager::GetInstancePointer()->GetAllObjects())
+    {
+        CMotionToto* motion = GetRobbieMotion(object);
+        if (motion != nullptr)
+        {
+            LogRobbieObject("Robbie found", object);
+            return motion;
+        }
+    }
+
+    GetLogger()->Info("[RobbieRuntime] FindRobbieMotion Robbie not found\n");
+    return nullptr;
+}
+
+static CMotionToto* GetRobbieMotionFromReceiver(CBotVar* thisclass)
+{
+    CObject* object = thisclass != nullptr ? static_cast<CObject*>(thisclass->GetUserPtr()) : nullptr;
+    CMotionToto* motion = GetRobbieMotion(object);
+    if (motion != nullptr)
+        return motion;
+
+    return FindRobbieMotion();
+}
+
+static CObject* GetRobbieTarget(CBotVar* var)
+{
+    if (var == nullptr)
+    {
+        GetLogger()->Info("[RobbieRuntime] GetRobbieTarget var=null\n");
+        return nullptr;
+    }
+
+    CObject* target = static_cast<CObject*>(var->GetUserPtr());
+    if (target == nullptr || target == OBJECTDELETED)
+    {
+        GetLogger()->Info("[RobbieRuntime] GetRobbieTarget target=null\n");
+        return nullptr;
+    }
+
+    LogRobbieObject("GetRobbieTarget", target);
+    return target;
+}
+
+static bool FinishRobbieCall(CBotVar* result, int& exception)
+{
+    if (result != nullptr)
+        result->SetValInt(ERR_OK);
+    exception = ERR_OK;
+    return true;
+}
+
+static bool rRobbieNear(CBotVar* var, CBotVar* result, int& exception, void* user)
+{
+    (void)var;
+    (void)user;
+
+    GetLogger()->Info("[RobbieRuntime] enter robbienear\n");
+    CMotionToto* motion = FindRobbieMotion();
+    if (motion != nullptr)
+    {
+        GetLogger()->Info("[RobbieRuntime] issuing StartNearFollow\n");
+        motion->StartNearFollow();
+    }
+    else
+    {
+        GetLogger()->Info("[RobbieRuntime] robbienear no CMotionToto available\n");
+    }
+
+    return FinishRobbieCall(result, exception);
+}
+
+static bool rRobbieFar(CBotVar* var, CBotVar* result, int& exception, void* user)
+{
+    (void)var;
+    (void)user;
+
+    GetLogger()->Info("[RobbieRuntime] enter robbiefar\n");
+    CMotionToto* motion = FindRobbieMotion();
+    if (motion != nullptr)
+    {
+        GetLogger()->Info("[RobbieRuntime] issuing StopNearFollow\n");
+        motion->StopNearFollow();
+    }
+    else
+    {
+        GetLogger()->Info("[RobbieRuntime] robbiefar no CMotionToto available\n");
+    }
+
+    return FinishRobbieCall(result, exception);
+}
+
+static bool rRobbieSetDistance(CBotVar* var, CBotVar* result, int& exception, void* user)
+{
+    (void)user;
+
+    GetLogger()->Info("[RobbieRuntime] enter robbiesetdistance\n");
+    float distance = var != nullptr ? var->GetValFloat() : 0.0f;
+    CMotionToto* motion = FindRobbieMotion();
+    if (motion != nullptr)
+    {
+        GetLogger()->Info("[RobbieRuntime] issuing SetFollowDistance distance=%.3f\n", distance);
+        motion->SetFollowDistance(distance);
+    }
+    else
+    {
+        GetLogger()->Info("[RobbieRuntime] robbiesetdistance no CMotionToto available\n");
+    }
+
+    return FinishRobbieCall(result, exception);
+}
+
+static bool rRobbieLook(CBotVar* var, CBotVar* result, int& exception, void* user)
+{
+    (void)user;
+
+    GetLogger()->Info("[RobbieRuntime] enter robbielook\n");
+    CObject* target = GetRobbieTarget(var);
+    if (target == nullptr)
+        GetLogger()->Info("[RobbieRuntime] robbielook target=null\n");
+
+    CMotionToto* motion = FindRobbieMotion();
+    if (motion != nullptr)
+    {
+        GetLogger()->Info("[RobbieRuntime] issuing SetLookTarget\n");
+        motion->SetLookTarget(target);
+    }
+    else
+    {
+        GetLogger()->Info("[RobbieRuntime] robbielook no CMotionToto available\n");
+    }
+
+    return FinishRobbieCall(result, exception);
+}
+
+static bool rRobbieClearLook(CBotVar* var, CBotVar* result, int& exception, void* user)
+{
+    (void)var;
+    (void)user;
+
+    GetLogger()->Info("[RobbieRuntime] enter robbieclearlook\n");
+    CMotionToto* motion = FindRobbieMotion();
+    if (motion != nullptr)
+    {
+        GetLogger()->Info("[RobbieRuntime] issuing ClearLookTarget\n");
+        motion->ClearLookTarget();
+    }
+    else
+    {
+        GetLogger()->Info("[RobbieRuntime] robbieclearlook no CMotionToto available\n");
+    }
+
+    return FinishRobbieCall(result, exception);
+}
+static bool rRobbieNearMethod(CBotVar* thisclass, CBotVar* var, CBotVar* result, int& exception, void* user)
+{
+    (void)var;
+    (void)user;
+
+    CMotionToto* motion = GetRobbieMotionFromReceiver(thisclass);
+    if (motion != nullptr)
+        motion->StartNearFollow();
+
+    return FinishRobbieCall(result, exception);
+}
+
+static bool rRobbieFarMethod(CBotVar* thisclass, CBotVar* var, CBotVar* result, int& exception, void* user)
+{
+    (void)var;
+    (void)user;
+
+    CMotionToto* motion = GetRobbieMotionFromReceiver(thisclass);
+    if (motion != nullptr)
+        motion->StopNearFollow();
+
+    return FinishRobbieCall(result, exception);
+}
+
+static bool rRobbieLookMethod(CBotVar* thisclass, CBotVar* var, CBotVar* result, int& exception, void* user)
+{
+    (void)user;
+
+    CMotionToto* motion = GetRobbieMotionFromReceiver(thisclass);
+    if (motion != nullptr)
+        motion->SetLookTarget(GetRobbieTarget(var));
+
+    return FinishRobbieCall(result, exception);
+}
+
+static bool rRobbieClearLookMethod(CBotVar* thisclass, CBotVar* var, CBotVar* result, int& exception, void* user)
+{
+    (void)var;
+    (void)user;
+
+    CMotionToto* motion = GetRobbieMotionFromReceiver(thisclass);
+    if (motion != nullptr)
+        motion->ClearLookTarget();
+
+    return FinishRobbieCall(result, exception);
 }
 
 // Compile a parameter of type "point".
@@ -3555,6 +3818,10 @@ void CScriptFunctions::Init()
     bc->AddItem("team",        CBotTypResult(CBotTypInt), CBotVar::ProtectionLevel::ReadOnly);
     bc->AddItem("dead",        CBotTypResult(CBotTypBoolean), CBotVar::ProtectionLevel::ReadOnly);
     bc->AddItem("velocity",    CBotTypResult(CBotTypClass, "point"), CBotVar::ProtectionLevel::ReadOnly);
+    bc->AddFunction("near",       rRobbieNearMethod,       cClassNull);
+    bc->AddFunction("far",        rRobbieFarMethod,        cClassNull);
+    bc->AddFunction("look",       rRobbieLookMethod,       cRobbieOneObject);
+    bc->AddFunction("clearLook",  rRobbieClearLookMethod,  cClassNull);
 
     CBotProgram::AddFunction("endmission",rEndMission,cEndMission);
     CBotProgram::AddFunction("playmusic", rPlayMusic ,cPlayMusic);
@@ -3611,6 +3878,11 @@ void CScriptFunctions::Init()
     CBotProgram::AddFunction("jet",       rJet,       cOneFloat);
     CBotProgram::AddFunction("topo",      rTopo,      cTopo);
     CBotProgram::AddFunction("message",   rMessage,   cMessage);
+    CBotProgram::AddFunction("robbienear",       rRobbieNear,       cNull);
+    CBotProgram::AddFunction("robbiefar",        rRobbieFar,        cNull);
+    CBotProgram::AddFunction("robbiesetdistance", rRobbieSetDistance, cOneFloat);
+    CBotProgram::AddFunction("robbielook",       rRobbieLook,       cOneObject);
+    CBotProgram::AddFunction("robbieclearlook",  rRobbieClearLook,  cNull);
     CBotProgram::AddFunction("cmdline",   rCmdline,   cOneFloat);
     CBotProgram::AddFunction("ismovie",   rIsMovie,   cNull);
     CBotProgram::AddFunction("errmode",   rErrMode,   cOneFloat);

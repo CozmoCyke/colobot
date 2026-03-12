@@ -23,6 +23,7 @@
 
 #include "math/point.h"
 
+class CObject;
 
 enum MotionTotoAction
 {
@@ -46,7 +47,13 @@ public:
 
     void    StartDisplayInfo();
     void    StopDisplayInfo();
+    void    StartNearFollow();
+    void    StopNearFollow();
+    void    SetFollowDistance(float distance);
     void    SetMousePos(Math::Point pos);
+    void    SetLookTarget(CObject* object);
+    CObject* GetLookTarget() const;
+    void    ClearLookTarget();
 
 protected:
     bool    EventFrame(const Event &event);
@@ -55,6 +62,7 @@ protected:
     float       m_time;
     float       m_lastMotorParticle;
     bool        m_bDisplayInfo;
+    bool        m_bNearFollow;
     bool        m_bQuickPos;
     bool        m_bStartAction;
     float       m_speedAction;
@@ -63,6 +71,10 @@ protected:
     float       m_clownTime;
     float       m_blinkTime;
     float       m_blinkProgress;
+    float       m_followDistance;
     int         m_soundChannel;
     Math::Point     m_mousePos;
+    int         m_nearTargetId;
+    int         m_lookTargetId;
 };
+
